@@ -42,3 +42,8 @@ _deps
 *.exe
 *.out
 *.app
+
+
+## User added
+build/
+bindings/

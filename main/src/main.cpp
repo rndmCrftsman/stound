@@ -1,282 +1,171 @@
-/** @file paex_sine.c
-    @ingroup examples_src
-    @brief Play a sine wave for several seconds.
-    @author Ross Bencina <rossb@audiomulch.com>
-    @author Phil Burk <philburk@softsynth.com>
-*/
-/*
- * $Id: paex_sine.c 1752 2011-09-08 03:21:55Z philburk $
- *
- * This program uses the PortAudio Portable Audio Library.
- * For more information see: http://www.portaudio.com/
- * Copyright (c) 1999-2000 Ross Bencina and Phil Burk
- *
- * Permission is hereby granted, free of charge, to any person obtaining
- * a copy of this software and associated documentation files
- * (the "Software"), to deal in the Software without restriction,
- * including without limitation the rights to use, copy, modify, merge,
- * publish, distribute, sublicense, and/or sell copies of the Software,
- * and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
- * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR
- * ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
- * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
- * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
+// Dear ImGui: standalone example application for GLFW + OpenGL 3, using programmable pipeline
+// (GLFW is a cross-platform general purpose library for handling windows, inputs, OpenGL/Vulkan/Metal graphics context creation, etc.)
 
-/*
- * The text above constitutes the entire PortAudio license; however,
- * the PortAudio community also makes the following non-binding requests:
- *
- * Any person wishing to distribute modifications to the Software is
- * requested to send the modifications to the original developer so that
- * they can be incorporated into the canonical version. It is also
- * requested that these non-binding requests be included along with the
- * license above.
- */
+// Learn about Dear ImGui:
+// - FAQ                  https://dearimgui.com/faq
+// - Getting Started      https://dearimgui.com/getting-started
+// - Documentation        https://dearimgui.com/docs (same as your local docs/ folder).
+// - Introduction, links and more at the top of imgui.cpp
+
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
 #include <stdio.h>
-#include <math.h>
-#include "portaudio.h"
+#define GL_SILENCE_DEPRECATION
+#if defined(IMGUI_IMPL_OPENGL_ES2)
+#include <GLES2/gl2.h>
+#endif
+#include <GLFW/glfw3.h> // Will drag system OpenGL headers
 
-#define NUM_SECONDS   (5)
-#define SAMPLE_RATE   (44100)
-#define FRAMES_PER_BUFFER  (64)
+static void glfw_error_callback(int error, const char* description)
+{
+    fprintf(stderr, "GLFW Error %d: %s\n", error, description);
+}
 
-#ifndef M_PI
-#define M_PI  (3.14159265)
+// Main code
+int main(int, char**)
+{
+    glfwSetErrorCallback(glfw_error_callback);
+    if (!glfwInit())
+        return 1;
+
+    // Decide GL+GLSL versions
+#if defined(IMGUI_IMPL_OPENGL_ES2)
+    // GL ES 2.0 + GLSL 100
+    const char* glsl_version = "#version 100";
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
+#elif defined(__APPLE__)
+    // GL 3.2 + GLSL 150
+    const char* glsl_version = "#version 150";
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // Required on Mac
+#else
+    // GL 3.0 + GLSL 130
+    const char* glsl_version = "#version 130";
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+    //glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
+    //glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // 3.0+ only
 #endif
 
-#define TABLE_SIZE   (200)
+    // Create window with graphics context
+    GLFWwindow* window = glfwCreateWindow(1280, 720, "Dear ImGui GLFW+OpenGL3 example", nullptr, nullptr);
+    if (window == nullptr)
+        return 1;
+    glfwMakeContextCurrent(window);
+    glfwSwapInterval(1); // Enable vsync
 
-class Sine
-{
-public:
-    Sine() : stream(0), left_phase(0), right_phase(0)
+    // Setup Dear ImGui context
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+
+    // Setup Dear ImGui style
+    ImGui::StyleColorsDark();
+    //ImGui::StyleColorsLight();
+
+    // Setup Platform/Renderer backends
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init(glsl_version);
+
+    // Load Fonts
+    // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
+    // - AddFontFromFileTTF() will return the ImFont* so you can store it if you need to select the font among multiple.
+    // - If the file cannot be loaded, the function will return a nullptr. Please handle those errors in your application (e.g. use an assertion, or display an error and quit).
+    // - The fonts will be rasterized at a given size (w/ oversampling) and stored into a texture when calling ImFontAtlas::Build()/GetTexDataAsXXXX(), which ImGui_ImplXXXX_NewFrame below will call.
+    // - Use '#define IMGUI_ENABLE_FREETYPE' in your imconfig file to use Freetype for higher quality font rendering.
+    // - Read 'docs/FONTS.md' for more instructions and details.
+    // - Remember that in C/C++ if you want to include a backslash \ in a string literal you need to write a double backslash \\ !
+    // - Our Emscripten build process allows embedding fonts to be accessible at runtime from the "fonts/" folder. See Makefile.emscripten for details.
+    //io.Fonts->AddFontDefault();
+    //io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\segoeui.ttf", 18.0f);
+    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf", 16.0f);
+    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Roboto-Medium.ttf", 16.0f);
+    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);
+    //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, nullptr, io.Fonts->GetGlyphRangesJapanese());
+    //IM_ASSERT(font != nullptr);
+
+    // Our state
+    bool show_demo_window = true;
+    bool show_another_window = false;
+    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+
+    while (!glfwWindowShouldClose(window))
     {
-        /* initialise sinusoidal wavetable */
-        for( int i=0; i<TABLE_SIZE; i++ )
+        // Poll and handle events (inputs, window resize, etc.)
+        // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
+        // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
+        // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
+        // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
+        glfwPollEvents();
+
+        // Start the Dear ImGui frame
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
+        // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
+        if (show_demo_window)
+            ImGui::ShowDemoWindow(&show_demo_window);
+
+        // 2. Show a simple window that we create ourselves. We use a Begin/End pair to create a named window.
         {
-            sine[i] = (float) sin( ((double)i/(double)TABLE_SIZE) * M_PI * 2. );
+            static float f = 0.0f;
+            static int counter = 0;
+
+            ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
+
+            ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
+            ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
+            ImGui::Checkbox("Another Window", &show_another_window);
+
+            ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
+            ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
+
+            if (ImGui::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
+                counter++;
+            ImGui::SameLine();
+            ImGui::Text("counter = %d", counter);
+
+            ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
+            ImGui::End();
         }
 
-        sprintf( message, "No Message" );
-    }
-
-    bool open(PaDeviceIndex index)
-    {
-        PaStreamParameters outputParameters;
-
-        outputParameters.device = index;
-        if (outputParameters.device == paNoDevice) {
-            return false;
-        }
-
-        const PaDeviceInfo* pInfo = Pa_GetDeviceInfo(index);
-        if (pInfo != 0)
+        // 3. Show another simple window.
+        if (show_another_window)
         {
-            printf("Output device name: '%s'\r", pInfo->name);
+            ImGui::Begin("Another Window", &show_another_window);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
+            ImGui::Text("Hello from another window!");
+            if (ImGui::Button("Close Me"))
+                show_another_window = false;
+            ImGui::End();
         }
 
-        outputParameters.channelCount = 2;       /* stereo output */
-        outputParameters.sampleFormat = paFloat32; /* 32 bit floating point output */
-        outputParameters.suggestedLatency = Pa_GetDeviceInfo( outputParameters.device )->defaultLowOutputLatency;
-        outputParameters.hostApiSpecificStreamInfo = NULL;
+        // Rendering
+        ImGui::Render();
+        int display_w, display_h;
+        glfwGetFramebufferSize(window, &display_w, &display_h);
+        glViewport(0, 0, display_w, display_h);
+        glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
+        glClear(GL_COLOR_BUFFER_BIT);
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-        PaError err = Pa_OpenStream(
-            &stream,
-            NULL, /* no input */
-            &outputParameters,
-            SAMPLE_RATE,
-            paFramesPerBufferUnspecified,
-            paClipOff,      /* we won't output out of range samples so don't bother clipping them */
-            &Sine::paCallback,
-            this            /* Using 'this' for userData so we can cast to Sine* in paCallback method */
-            );
-
-        if (err != paNoError)
-        {
-            /* Failed to open stream to device !!! */
-            return false;
-        }
-
-        err = Pa_SetStreamFinishedCallback( stream, &Sine::paStreamFinished );
-
-        if (err != paNoError)
-        {
-            Pa_CloseStream( stream );
-            stream = 0;
-
-            return false;
-        }
-
-        return true;
+        glfwSwapBuffers(window);
     }
 
-    bool close()
-    {
-        if (stream == 0)
-            return false;
+    // Cleanup
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
 
-        PaError err = Pa_CloseStream( stream );
-        stream = 0;
+    glfwDestroyWindow(window);
+    glfwTerminate();
 
-        return (err == paNoError);
-    }
-
-
-    bool start()
-    {
-        if (stream == 0)
-            return false;
-
-        PaError err = Pa_StartStream( stream );
-
-        return (err == paNoError);
-    }
-
-    bool stop()
-    {
-        if (stream == 0)
-            return false;
-
-        PaError err = Pa_StopStream( stream );
-
-        return (err == paNoError);
-    }
-
-private:
-    /* The instance callback, where we have access to every method/variable in object of class Sine */
-    int paCallbackMethod(const void *inputBuffer, void *outputBuffer,
-        unsigned long framesPerBuffer,
-        const PaStreamCallbackTimeInfo* timeInfo,
-        PaStreamCallbackFlags statusFlags)
-    {
-        float *out = (float*)outputBuffer;
-        unsigned long i;
-
-        (void) timeInfo; /* Prevent unused variable warnings. */
-        (void) statusFlags;
-        (void) inputBuffer;
-
-        for( i=0; i<framesPerBuffer; i++ )
-        {
-            *out++ = sine[left_phase];  /* left */
-            *out++ = sine[right_phase];  /* right */
-            left_phase += 1;
-            if( left_phase >= TABLE_SIZE ) left_phase -= TABLE_SIZE;
-            right_phase += 3; /* higher pitch so we can distinguish left and right. */
-            if( right_phase >= TABLE_SIZE ) right_phase -= TABLE_SIZE;
-        }
-
-        return paContinue;
-
-    }
-
-    /* This routine will be called by the PortAudio engine when audio is needed.
-    ** It may called at interrupt level on some machines so don't do anything
-    ** that could mess up the system like calling malloc() or free().
-    */
-    static int paCallback( const void *inputBuffer, void *outputBuffer,
-        unsigned long framesPerBuffer,
-        const PaStreamCallbackTimeInfo* timeInfo,
-        PaStreamCallbackFlags statusFlags,
-        void *userData )
-    {
-        /* Here we cast userData to Sine* type so we can call the instance method paCallbackMethod, we can do that since
-           we called Pa_OpenStream with 'this' for userData */
-        return ((Sine*)userData)->paCallbackMethod(inputBuffer, outputBuffer,
-            framesPerBuffer,
-            timeInfo,
-            statusFlags);
-    }
-
-
-    void paStreamFinishedMethod()
-    {
-        printf( "Stream Completed: %s\n", message );
-    }
-
-    /*
-     * This routine is called by portaudio when playback is done.
-     */
-    static void paStreamFinished(void* userData)
-    {
-        return ((Sine*)userData)->paStreamFinishedMethod();
-    }
-
-    PaStream *stream;
-    float sine[TABLE_SIZE];
-    int left_phase;
-    int right_phase;
-    char message[20];
-};
-
-class ScopedPaHandler
-{
-public:
-    ScopedPaHandler()
-        : _result(Pa_Initialize())
-    {
-    }
-    ~ScopedPaHandler()
-    {
-        if (_result == paNoError)
-        {
-            Pa_Terminate();
-        }
-    }
-
-    PaError result() const { return _result; }
-
-private:
-    PaError _result;
-};
-
-
-/*******************************************************************/
-int main(void);
-int main(void)
-{
-    Sine sine;
-
-    printf("PortAudio Test: output sine wave. SR = %d, BufSize = %d\n", SAMPLE_RATE, FRAMES_PER_BUFFER);
-
-    ScopedPaHandler paInit;
-    if( paInit.result() != paNoError ) goto error;
-
-    printf("Device Count: %d\n", Pa_GetDeviceCount());
-
-    if (sine.open(Pa_GetDefaultOutputDevice()))
-    {
-        if (sine.start())
-        {
-            printf("Play for %d seconds.\n", NUM_SECONDS );
-            Pa_Sleep( NUM_SECONDS * 1000 );
-            printf("Played for %d seconds.\n", NUM_SECONDS );
-
-            sine.stop();
-        }
-
-        sine.close();
-    } else {
-        goto error;
-    }
-
-
-
-    printf("Test finished.\n");
-    return paNoError;
-
-error:
-    fprintf( stderr, "An error occurred while using the portaudio stream\n" );
-    fprintf( stderr, "Error number: %d\n", paInit.result() );
-    fprintf( stderr, "Error message: %s\n", Pa_GetErrorText( paInit.result() ) );
-    return 1;
+    return 0;
 }
