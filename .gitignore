@@ -47,3 +47,4 @@ _deps
 ## User added
 build/
 bindings/
+.vscode/
