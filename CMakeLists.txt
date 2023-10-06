@@ -11,12 +11,12 @@ include(${CMAKE_BINARY_DIR}/conan_paths.cmake)
 
 find_package(imgui REQUIRED)
 find_package(glfw3 REQUIRED)
-find_package(glew REQUIRED)
+find_package(GLEW REQUIRED)
 find_package(miniaudio REQUIRED)
 
 add_executable(stound 
     main/src/main.cpp
-    main/src/impl_miniaudio.cpp
+    # main/src/impl_miniaudio.cpp
     bindings/imgui_impl_glfw.h
     bindings/imgui_impl_glfw.cpp
     bindings/imgui_impl_opengl3.h
@@ -28,6 +28,7 @@ target_include_directories(
     PRIVATE
         main/inc
         bindings
+        #${miniaudio_INCLUDE_DIR}/include
 )
 
 # target_compile_definitions(stound PUBLIC IMGUI_IMPL_OPENGL_LOADER_GLEW)
