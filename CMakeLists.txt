@@ -15,8 +15,8 @@ find_package(GLEW REQUIRED)
 find_package(miniaudio REQUIRED)
 
 add_executable(stound 
+    main/src/miniaudio_impl.cpp
     main/src/main.cpp
-    # main/src/impl_miniaudio.cpp
     bindings/imgui_impl_glfw.h
     bindings/imgui_impl_glfw.cpp
     bindings/imgui_impl_opengl3.h

@@ -17,7 +17,6 @@
 #endif
 #include <GLFW/glfw3.h> // Will drag system OpenGL headers
 
-#define MINIAUDIO_IMPLEMENTATION
 #include "miniaudio.h"
 
 static void glfw_error_callback(int error, const char* description)
