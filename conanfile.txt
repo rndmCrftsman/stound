@@ -3,6 +3,11 @@ imgui/1.89.9-docking
 glfw/3.3.8
 glew/2.2.0
 miniaudio/0.11.17
+drwav/0.13.12
+drmp3/0.6.34
+drflac/0.12.39
+ogg/1.3.5
+vorbis/1.3.7
 
 [generators]
 cmake_find_package

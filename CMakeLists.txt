@@ -13,9 +13,16 @@ find_package(imgui REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(GLEW REQUIRED)
 find_package(miniaudio REQUIRED)
+find_package(drwav REQUIRED)
+find_package(drmp3 REQUIRED)
+find_package(drflac REQUIRED)
+find_package(Ogg REQUIRED)
+find_package(Vorbis REQUIRED)
+
 
 add_executable(stound 
     main/src/miniaudio_impl.cpp
+    main/src/dr_libs_impl.cpp
     main/src/main.cpp
     bindings/imgui_impl_glfw.h
     bindings/imgui_impl_glfw.cpp
@@ -28,7 +35,6 @@ target_include_directories(
     PRIVATE
         main/inc
         bindings
-        #${miniaudio_INCLUDE_DIR}/include
 )
 
 # target_compile_definitions(stound PUBLIC IMGUI_IMPL_OPENGL_LOADER_GLEW)
@@ -39,4 +45,9 @@ target_link_libraries(
         glfw::glfw
         GLEW::GLEW
         miniaudio::miniaudio
+        drwav::drwav
+        drmp3::drmp3
+        drflac::drflac
+        Ogg::ogg
+        Vorbis::vorbis
 )

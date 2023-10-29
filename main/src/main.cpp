@@ -18,6 +18,7 @@
 #include <GLFW/glfw3.h> // Will drag system OpenGL headers
 
 #include "miniaudio.h"
+#include "vorbis/vorbisfile.h"
 
 static void glfw_error_callback(int error, const char* description)
 {
